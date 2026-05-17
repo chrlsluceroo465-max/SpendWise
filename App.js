@@ -61,7 +61,6 @@ export default function App() {
       saveData(updated);
     } else {
       
-//Charles
       const newItem = { 
         id: Date.now().toString(), 
         title, 
