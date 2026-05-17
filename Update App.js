@@ -56,11 +56,13 @@ export default function App() {
 
 //Jericho
       const updated = expenses.map(item =>
+      const updated = expenses.map(item =>
         item.id === editingId ? { ...item, title, amount, category: category || 'General', day } : item
       );
       saveData(updated);
     } else {
       
+//Charles
       const newItem = { 
         id: Date.now().toString(), 
         title, 
@@ -81,7 +83,7 @@ export default function App() {
     setDay(item.day || 'Monday');
     setModalVisible(true);
   };
-
+  
 //Tumaque
   const deleteItem = (id) => {
     Alert.alert("Delete Expense", "Are you sure you want to remove this item?", [
