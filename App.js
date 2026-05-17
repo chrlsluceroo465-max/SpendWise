@@ -30,7 +30,75 @@ export default function App() {
   }, []);
 
 //CRUD Functions
+//Vicente
+  const loadData = async () => {
+    try {
+      const storedData = await AsyncStorage.getItem('@expenses');
+      if (storedData) setExpenses(JSON.parse(storedData));
+    } catch (e) {
+      Alert.alert("Error", "Failed to load data.");
+    }
+  };
 
+  const saveData = async (newData) => {
+    try {
+      await AsyncStorage.setItem('@expenses', JSON.stringify(newData));
+      setExpenses(newData);
+    } catch (e) {
+      Alert.alert("Error", "Failed to save data.");
+    }
+  };
+
+  const handleSave = () => {
+    if (!title || !amount) return Alert.alert("Required Fields", "Please fill out Title and Amount.");
+
+    if (editingId) {
+
+//Jericho
+      const updated = expenses.map(item =>
+        item.id === editingId ? { ...item, title, amount, category: category || 'General', day } : item
+      );
+      saveData(updated);
+    } else {
+      
+//Charles
+      const newItem = { 
+        id: Date.now().toString(), 
+        title, 
+        amount, 
+        category: category || 'General',
+        day 
+      };
+      saveData([...expenses, newItem]);
+    }
+    resetForm();
+  };
+
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setTitle(item.title);
+    setAmount(item.amount);
+    setCategory(item.category);
+    setDay(item.day || 'Monday');
+    setModalVisible(true);
+  };
+
+//Tumaque
+  const deleteItem = (id) => {
+    Alert.alert("Delete Expense", "Are you sure you want to remove this item?", [
+      { text: "Cancel", style: "cancel" },
+      { 
+        text: "Delete", 
+        style: "destructive", 
+        onPress: () => {
+
+          const remainingExpenses = expenses.filter(item => item.id !== id);
+          
+          saveData(remainingExpenses);
+        } 
+      }
+    ]);
+  };
   const resetForm = () => {
     setTitle('');
     setAmount('');
