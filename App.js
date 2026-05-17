@@ -91,15 +91,15 @@ const newItem = {
         style: "destructive", 
         onPress: () => {
 
-          const updatedExpenses = expenses.filter(item => item.id !== id);
+          const remainingExpenses = expenses.filter(item => item.id !== id);
           
-          await saveData(updatedExpenses);
-
-          Alert.alert("Success", "Expense deleted successfully")
+          saveData(remainingExpenses);
         } 
       }
     ]);
   };
+
+  
   const resetForm = () => {
     setTitle('');
     setAmount('');
@@ -219,8 +219,8 @@ function ExpenseCard({ item, onEdit, onDelete }) {
           <TouchableOpacity onPress={onEdit} style={styles.iconBtn}>
             <Edit3 size={18} color="#64748B" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onDelete} style={styles.iconBtn}>
-            <Trash2 size={18} color="#EF4444" />
+          <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
+            <Trash2 size={20} color="red" />
           </TouchableOpacity>
         </View>
       </View>
@@ -291,7 +291,7 @@ function ExpenseModal({ visible, editingId, title, setTitle, amount, setAmount, 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   headerCard: { 
-    backgroundColor: '#1E293B', 
+    backgroundColor: '#0006a5', 
     padding: 21, 
     marginHorizontal: 16,
     marginTop: 16,
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     position: 'absolute', 
     right: 20, 
     bottom: 30, 
-    backgroundColor: '#4F46E', 
+    backgroundColor: '#4F46E5', 
     width: 56,
     height: 56,
     borderRadius: 28, 
