@@ -91,9 +91,11 @@ export default function App() {
         style: "destructive", 
         onPress: () => {
 
-          const remainingExpenses = expenses.filter(item => item.id !== id);
+          const updatedExpenses = expenses.filter(item => item.id !== id);
           
-          saveData(remainingExpenses);
+          await saveData(updatedExpenses);
+
+          Alert.alert("Success", "Expense deleted successfully")
         } 
       }
     ]);
