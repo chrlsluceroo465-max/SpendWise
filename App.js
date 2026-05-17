@@ -57,3 +57,47 @@ export default function App() {
     { dayName: 'Saturday', amount: getExpensesByDay('Saturday') },
     { dayName: 'Sunday', amount: getExpensesByDay('Sunday') },
   ];
+
+return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      <HeaderCard total={totalWeeklyExpenses} totalItems={expenses.length} />
+      <WeeklyBreakdownDashboard breakdown={weeklyBreakdown} />
+
+      <FlatList
+        data={expenses}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No expenses recorded yet.</Text>
+            <Text style={styles.emptySubtext}>Tap the + button to track your first budget item.</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <ExpenseCard item={item} onEdit={() => startEdit(item)} onDelete={() => deleteItem(item.id)} />
+        )}
+      />
+
+      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.8}>
+        <Plus color="#FFF" size={28} />
+      </TouchableOpacity>
+
+      <ExpenseModal
+        visible={modalVisible}
+        editingId={editingId}
+        title={title}
+        setTitle={setTitle}
+        amount={amount}
+        setAmount={setAmount}
+        category={category}
+        setCategory={setCategory}
+        day={day}
+        setDay={setDay}
+        onSave={handleSave}
+        onClose={resetForm}
+      />
+    </SafeAreaView>
+  );
+}
