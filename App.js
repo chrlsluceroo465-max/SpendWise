@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   headerCard: { 
     backgroundColor: '#1E293B', 
-    padding: 20, 
+    padding: 21, 
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 8, 
@@ -363,5 +363,5 @@ const styles = StyleSheet.create({
   dayChipText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
   activeDayChipText: { color: '#FFF' },
   saveBtn: { backgroundColor: '#4F46E5', padding: 16, borderRadius: 14, alignItems: 'center', marginTop: 14 },
-  btnText: { color: '#FFF', fontWeight: '700', fontSize: 16 }
+  btnText: { color: 'white', fontWeight: '700', fontSize: 16 }
 });
