@@ -60,8 +60,7 @@ export default function App() {
       saveData(updated);
     } else {
       
-//Charles
-      const newItem = { 
+const newItem = { 
         id: Date.now().toString(), 
         title, 
         amount, 
