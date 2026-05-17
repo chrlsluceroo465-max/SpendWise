@@ -101,3 +101,62 @@ return (
     </SafeAreaView>
   );
 }
+
+function HeaderCard({ total, totalItems }) {
+  return (
+    <View style={styles.headerCard}>
+      <Text style={styles.totalLabel}>TOTAL Daily EXPENSES</Text>
+      <Text style={styles.totalAmount}>Php{total.toFixed(2)}</Text>
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>{totalItems} {totalItems === 1 ? 'Transaction' : 'Transactions'}</Text>
+      </View>
+    </View>
+  );
+}
+
+function WeeklyBreakdownDashboard({ breakdown }) {
+  return (
+    <View style={styles.dashboardContainer}>
+      <Text style={styles.dashboardTitle}>Weekly Summary Breakdown</Text>
+      <View style={styles.daysRow}>
+        {breakdown.map((item) => (
+          <View key={item.dayName} style={styles.dayColumn}>
+            <Text style={styles.dayLabel}>{item.dayName.substring(0, 3)}</Text>
+            <Text style={styles.dayAmount}>Php{item.amount.toFixed(0)}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ExpenseCard({ item, onEdit, onDelete }) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardLeft}>
+        <View style={styles.categoryIconPlaceholder}>
+          <Text style={styles.categoryLetter}>{item.category ? item.category.charAt(0).toUpperCase() : 'E'}</Text>
+        </View>
+        <View style={styles.cardDetails}>
+          <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+          <Text style={styles.itemCat}>{item.category} • <Text style={styles.boldDay}>{item.day || 'Monday'}</Text></Text>
+        </View>
+      </View>
+      
+      <View style={styles.cardRight}>
+        <Text style={styles.itemAmount}>Php{parseFloat(item.amount).toFixed(2)}</Text>
+        <View style={styles.actionRow}>
+          <TouchableOpacity onPress={onEdit} style={styles.iconBtn}>
+            <Edit3 size={18} color="#64748B" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onDelete} style={styles.iconBtn}>
+            <Trash2 size={18} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ExpenseModal({ visible, editingId, title, setTitle, amount, setAmount, category, setCategory, day, setDay, onSave, onClose }) {
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
