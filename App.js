@@ -28,3 +28,32 @@ export default function App() {
   useEffect(() => {
     loadData();
   }, []);
+
+//CRUD Functions
+
+  const resetForm = () => {
+    setTitle('');
+    setAmount('');
+    setCategory('');
+    setDay('Monday');
+    setEditingId(null);
+    setModalVisible(false);
+  };
+
+  const totalWeeklyExpenses = expenses.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+
+  const getExpensesByDay = (targetDay) => {
+    return expenses
+      .filter(item => item.day === targetDay)
+      .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+  };
+
+  const weeklyBreakdown = [
+    { dayName: 'Monday', amount: getExpensesByDay('Monday') },
+    { dayName: 'Tuesday', amount: getExpensesByDay('Tuesday') },
+    { dayName: 'Wednesday', amount: getExpensesByDay('Wednesday') },
+    { dayName: 'Thursday', amount: getExpensesByDay('Thursday') },
+    { dayName: 'Friday', amount: getExpensesByDay('Friday') },
+    { dayName: 'Saturday', amount: getExpensesByDay('Saturday') },
+    { dayName: 'Sunday', amount: getExpensesByDay('Sunday') },
+  ];
