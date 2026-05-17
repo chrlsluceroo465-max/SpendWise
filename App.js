@@ -54,14 +54,13 @@ export default function App() {
 
     if (editingId) {
 
-//Jericho
-      const updated = expenses.map(item =>
-      const updated = expenses.map(item =>
+   const updated = expenses.map(item =>
         item.id === editingId ? { ...item, title, amount, category: category || 'General', day } : item
       );
       saveData(updated);
     } else {
-
+      
+//Charles
       const newItem = { 
         id: Date.now().toString(), 
         title, 
@@ -82,7 +81,8 @@ export default function App() {
     setDay(item.day || 'Monday');
     setModalVisible(true);
   };
-  
+
+
 //Tumaque
   const deleteItem = (id) => {
     Alert.alert("Delete Expense", "Are you sure you want to remove this item?", [
@@ -366,3 +366,5 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: '#4F46E5', padding: 16, borderRadius: 14, alignItems: 'center', marginTop: 14 },
   btnText: { color: 'white', fontWeight: '700', fontSize: 16 }
 });
+
+//pogi si sir Arnold
