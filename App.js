@@ -12,10 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Button
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Plus, Trash2, Edit3, X, DollarSign, Tag, FileText, Calendar, Banknote } from 'lucide-react-native';
 
 import { auth, db } from './firebase'; 
 import { 
@@ -48,12 +45,6 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  function onAuthStateChanged(user) {
-    setUser(user);
-    const [initializing, setInitializing] = useState(false);
-    const [user, setUser] = useState({ email: 'chrlsluceroo465@gmail.com' });
-  }
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -73,7 +64,7 @@ export default function App() {
   const handleLogin = async () => {
     if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
     try {
-      await auth().signInWithEmailAndPassword(email, password);
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
       Alert.alert("Login Failed", error.message);
     }
@@ -82,7 +73,7 @@ export default function App() {
   const handleSignUp = async () => {
     if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
     try {
-      await auth().createUserWithEmailAndPassword(email, password);
+      await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
       Alert.alert("Registration Failed", error.message);
     }
@@ -90,19 +81,13 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await auth().signOut();
+      await signOut(auth);
     } catch (error) {
       Alert.alert("Error Logging Out", error.message);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-//CRUD Functions
-//Vicente
- const loadData = async () => {
+  const loadData = async () => {
     if (!auth.currentUser) return;
     try {
       const q = query(collection(db, 'users', auth.currentUser.uid, 'expenses'));
@@ -116,7 +101,7 @@ export default function App() {
       Alert.alert("Error", "Failed to load data from server.");
     }
   };
-//Jericho
+
   const handleSave = async () => {
     if (!title || !amount) return Alert.alert("Required Fields", "Please fill out Title and Amount.");
     if (!auth.currentUser) return;
@@ -131,7 +116,6 @@ export default function App() {
 
     try {
       if (editingId) {
-
         const docRef = doc(db, 'users', auth.currentUser.uid, 'expenses', editingId);
         await updateDoc(docRef, expenseData);
       } else {
@@ -144,24 +128,30 @@ export default function App() {
       Alert.alert("Save Failed", error.message);
     }
   };
-//Tumaque
+
   const deleteItem = (id) => {
-    Alert.alert("Delete Expense", "Are you sure you want to remove this item?", [
-      { text: "Cancel", style: "cancel" },
-      { 
-        text: "Delete", 
-        style: "destructive", 
-        onPress: async () => {
-          try {
-            const docRef = doc(db, 'users', auth.currentUser.uid, 'expenses', id);
-            await deleteDoc(docRef);
-            loadData(); // Re-fetch current listings
-          } catch (e) {
-            Alert.alert("Error", "Could not delete database item.");
-          }
-        } 
+
+    if (Platform.OS === 'web') {
+      const confirmDelete = window.confirm("Are you sure you want to remove this item?");
+      if (confirmDelete) {
+        executeDeletion(id);
       }
-    ]);
+    } else {
+      Alert.alert("Delete Expense", "Are you sure you want to remove this item?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => executeDeletion(id) }
+      ]);
+    }
+  };
+
+  const executeDeletion = async (id) => {
+    try {
+      const docRef = doc(db, 'users', auth.currentUser.uid, 'expenses', id);
+      await deleteDoc(docRef);
+      loadData(); 
+    } catch (e) {
+      Alert.alert("Error", "Could not delete database item.");
+    }
   };
 
   const startEdit = (item) => {
@@ -200,7 +190,7 @@ export default function App() {
     { dayName: 'Sunday', amount: getExpensesByDay('Sunday') },
   ];
 
-if (initializing) {
+  if (initializing) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ color: '#64748B' }}>Loading SpendWise...</Text>
@@ -208,7 +198,6 @@ if (initializing) {
     );
   }
 
-  // ====== Auth Screen State ======
   if (!user) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', paddingHorizontal: 24 }]}>
@@ -216,12 +205,12 @@ if (initializing) {
         <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#0006a5', marginBottom: 32, textAlign: 'center' }}>SpendWise Ledger</Text>
         
         <View style={styles.inputGroup}>
-          <FileText size={18} color="#94A3B8" style={styles.inputIcon} />
+          <Text style={styles.emojiIcon}>✉️</Text>
           <TextInput placeholder="Email Address" value={email} onChangeText={setEmail} style={styles.input} autoCapitalize="none" keyboardType="email-address" placeholderTextColor="#94A3B8" />
         </View>
 
         <View style={styles.inputGroup}>
-          <X size={18} color="#94A3B8" style={styles.inputIcon} />
+          <Text style={styles.emojiIcon}>🔒</Text>
           <TextInput placeholder="Password" value={password} onChangeText={setPassword} style={styles.input} secureTextEntry autoCapitalize="none" placeholderTextColor="#94A3B8" />
         </View>
 
@@ -236,7 +225,6 @@ if (initializing) {
     );
   }
   
-  // ====== Main Application State ======
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -267,7 +255,7 @@ if (initializing) {
       />
 
       <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.8}>
-        <Plus color="#FFF" size={28} />
+        <Text style={{ color: '#FFF', fontSize: 28, fontWeight: '300' }}>+</Text>
       </TouchableOpacity>
 
       <ExpenseModal
@@ -331,15 +319,13 @@ function ExpenseCard({ item, onEdit, onDelete }) {
       </View>
       
       <View style={styles.cardRight}>
-        <Text style={styles.itemAmount}>
-  Php{(parseFloat(item.amount) || 0).toFixed(2)}
-</Text>local
+        <Text style={styles.itemAmount}>Php{(parseFloat(item.amount) || 0).toFixed(2)}</Text>
         <View style={styles.actionRow}>
           <TouchableOpacity onPress={onEdit} style={styles.iconBtn}>
-            <Edit3 size={18} color="#64748B" />
+            <Text style={{ fontSize: 14 }}>✏️</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
-            <Trash2 size={20} color="red" />
+          <TouchableOpacity onPress={onDelete} style={styles.iconBtn}>
+            <Text style={{ fontSize: 14 }}>🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -359,29 +345,29 @@ function ExpenseModal({ visible, editingId, title, setTitle, amount, setAmount, 
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>{editingId ? 'Modify Expense' : 'Add New Expense'}</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <X color="#64748B" size={22} />
+            <Text style={{ color: '#64748B', fontSize: 16, fontWeight: 'bold' }}>✕</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.modalForm}>
           <View style={styles.inputGroup}>
-            <FileText size={18} color="#94A3B8" style={styles.inputIcon} />
+            <Text style={styles.emojiIcon}>📝</Text>
             <TextInput placeholder="What did you buy?" value={title} onChangeText={setTitle} style={styles.input} placeholderTextColor="#94A3B8" />
           </View>
 
           <View style={styles.inputGroup}>
-            <Banknote size={18} color="#94A3B8" />
+            <Text style={styles.emojiIcon}>₱</Text>
             <TextInput placeholder="   0.00" value={amount} onChangeText={setAmount} keyboardType="numeric" style={styles.input} placeholderTextColor="#94A3B8" />
           </View>
 
           <View style={styles.inputGroup}>
-            <Tag size={18} color="#94A3B8" style={styles.inputIcon} />
+            <Text style={styles.emojiIcon}>🏷️</Text>
             <TextInput placeholder="Category (e.g., Food, Utilities)" value={category} onChangeText={setCategory} style={styles.input} placeholderTextColor="#94A3B8" />
           </View>
 
           <View style={styles.daySelectorContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-              <Calendar size={18} color="#64748B" style={{ marginRight: 8 }} />
+              <Text style={{ marginRight: 8, fontSize: 16 }}>📅</Text>
               <Text style={styles.selectorLabel}>Select Day of Week:</Text>
             </View>
             <View style={styles.daysChipsRow}>
@@ -406,7 +392,6 @@ function ExpenseModal({ visible, editingId, title, setTitle, amount, setAmount, 
   );
 }
 
-//style
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   headerCard: { 
@@ -453,7 +438,8 @@ const styles = StyleSheet.create({
   cardRight: { alignItems: 'flex-end', justifyContent: 'center' },
   itemAmount: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
   actionRow: { flexDirection: 'row', gap: 8 },
-  iconBtn: { padding: 6, borderRadius: 8, backgroundColor: '#F8FAFC' },
+  iconBtn: { padding: 6, borderRadius: 8, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' },
+  emojiIcon: { fontSize: 16, marginRight: 10 },
   fab: { 
     position: 'absolute', 
     right: 20, 
@@ -469,10 +455,9 @@ const styles = StyleSheet.create({
   modalView: { flex: 1, backgroundColor: '#FFF' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderColor: '#F1F5F9' },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  closeBtn: { padding: 4, backgroundColor: '#F1F5F9', borderRadius: 20 },
+  closeBtn: { padding: 6, backgroundColor: '#F1F5F9', borderRadius: 20, width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   modalForm: { padding: 24, gap: 18 },
   inputGroup: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1.5, borderColor: '#E2E8F0', paddingVertical: 6 },
-  inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 16, color: '#0F172A', paddingVertical: 6 },
   daySelectorContainer: { marginTop: 6 },
   selectorLabel: { fontSize: 14, fontWeight: '600', color: '#475569' },
@@ -484,5 +469,3 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: '#4F46E5', padding: 16, borderRadius: 14, alignItems: 'center', marginTop: 14 },
   btnText: { color: 'white', fontWeight: '700', fontSize: 16 }
 });
-
-//pogi si sir Arnold
