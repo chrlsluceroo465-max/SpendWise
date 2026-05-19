@@ -58,7 +58,7 @@ export default function App() {
         item.id === editingId ? { ...item, title, amount, category: category || 'General', day } : item
       );
       saveData(updated);
-    } else {
+    } else { .
       
 const newItem = { 
         id: Date.now().toString(), 
