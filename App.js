@@ -11,10 +11,12 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  StatusBar
+  StatusBar,
+  Button
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Plus, Trash2, Edit3, X, DollarSign, Tag, FileText, Calendar, Banknote } from 'lucide-react-native';
+import auth from '@react-native-firebase/auth';
 
 export default function App() {
   const [expenses, setExpenses] = useState([]);
@@ -24,6 +26,49 @@ export default function App() {
   const [category, setCategory] = useState('');
   const [day, setDay] = useState('Monday');
   const [editingId, setEditingId] = useState(null);
+
+// ==========================================
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Handle user state changes
+  function onAuthStateChanged(user) {
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }
+
+  useEffect(() => {
+    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
+  const handleLogin = async () => {
+    if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
+    try {
+      await auth().signInWithEmailAndPassword(email, password);
+    } catch (error) {
+      Alert.alert("Login Failed", error.message);
+    }
+  };
+
+  const handleSignUp = async () => {
+    if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
+    try {
+      await auth().createUserWithEmailAndPassword(email, password);
+    } catch (error) {
+      Alert.alert("Registration Failed", error.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await auth().signOut();
+    } catch (error) {
+      Alert.alert("Error Logging Out", error.message);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -127,6 +172,9 @@ const newItem = {
     { dayName: 'Sunday', amount: getExpensesByDay('Sunday') },
   ];
 
+if (initializing) return null;
+
+if (!user) {
 return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -170,6 +218,62 @@ return (
     </SafeAreaView>
   );
 }
+}
+
+// ==========================================
+  // FIREBASE AUTH INTEGRATION END
+  // ==========================================
+
+return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      <View style={{ paddingHorizontal: 16, paddingTop: 10, alignment: 'flex-end', flexDirection: 'row', justifyContent: 'spaceBetween' }}>
+        <Text style={{ fontSize: 12, color: '#64748B' }}>User: {user.email}</Text>
+        <TouchableOpacity onPress={handleLogout}>
+          <Text style={{ fontSize: 12, color: 'red', fontWeight: 'bold' }}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+      {}
+
+      <HeaderCard total={totalWeeklyExpenses} totalItems={expenses.length} />
+      <WeeklyBreakdownDashboard breakdown={weeklyBreakdown} />
+
+      <FlatList
+        data={expenses}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No expenses recorded yet.</Text>
+            <Text style={styles.emptySubtext}>Tap the + button to track your first budget item.</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <ExpenseCard item={item} onEdit={() => startEdit(item)} onDelete={() => deleteItem(item.id)} />
+        )}
+      />
+
+      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.8}>
+        <Plus color="#FFF" size={28} />
+      </TouchableOpacity>
+
+      <ExpenseModal
+        visible={modalVisible}
+        editingId={editingId}
+        title={title}
+        setTitle={setTitle}
+        amount={amount}
+        setAmount={setAmount}
+        category={category}
+        setCategory={setCategory}
+        day={day}
+        setDay={setDay}
+        onSave={handleSave}
+        onClose={resetForm}
+      />
+    </SafeAreaView>
+  );
 
 function HeaderCard({ total, totalItems }) {
   return (
