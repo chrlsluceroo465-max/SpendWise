@@ -16,7 +16,23 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Plus, Trash2, Edit3, X, DollarSign, Tag, FileText, Calendar, Banknote } from 'lucide-react-native';
-import auth from '@react-native-firebase/auth';
+
+import { auth, db } from './firebase'; 
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  collection, 
+  addDoc, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query 
+} from 'firebase/firestore';
 
 export default function App() {
   const [expenses, setExpenses] = useState([]);
@@ -27,22 +43,32 @@ export default function App() {
   const [day, setDay] = useState('Monday');
   const [editingId, setEditingId] = useState(null);
 
-// ==========================================
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Handle user state changes
   function onAuthStateChanged(user) {
     setUser(user);
-    if (initializing) setInitializing(false);
+    const [initializing, setInitializing] = useState(false);
+    const [user, setUser] = useState({ email: 'chrlsluceroo465@gmail.com' });
   }
 
   useEffect(() => {
-    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
-    return subscriber; // unsubscribe on unmount
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (initializing) setInitializing(false);
+    });
+    return unsubscribe; 
+  }, [initializing]);
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    } else {
+      setExpenses([]);
+    }
+  }, [user]);
 
   const handleLogin = async () => {
     if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
@@ -76,57 +102,48 @@ export default function App() {
 
 //CRUD Functions
 //Vicente
-  const loadData = async () => {
+ const loadData = async () => {
+    if (!auth.currentUser) return;
     try {
-      const storedData = await AsyncStorage.getItem('@expenses');
-      if (storedData) setExpenses(JSON.parse(storedData));
+      const q = query(collection(db, 'users', auth.currentUser.uid, 'expenses'));
+      const querySnapshot = await getDocs(q);
+      const loadedExpenses = [];
+      querySnapshot.forEach((document) => {
+        loadedExpenses.push({ id: document.id, ...document.data() });
+      });
+      setExpenses(loadedExpenses);
     } catch (e) {
-      Alert.alert("Error", "Failed to load data.");
+      Alert.alert("Error", "Failed to load data from server.");
     }
   };
-
-  const saveData = async (newData) => {
-    try {
-      await AsyncStorage.setItem('@expenses', JSON.stringify(newData));
-      setExpenses(newData);
-    } catch (e) {
-      Alert.alert("Error", "Failed to save data.");
-    }
-  };
-
-  const handleSave = () => {
+//Jericho
+  const handleSave = async () => {
     if (!title || !amount) return Alert.alert("Required Fields", "Please fill out Title and Amount.");
+    if (!auth.currentUser) return;
 
-    if (editingId) {
+    const expenseData = {
+      title,
+      amount: parseFloat(amount) || 0,
+      category: category || 'General',
+      day,
+      updatedAt: Date.now()
+    };
 
-   const updated = expenses.map(item =>
-        item.id === editingId ? { ...item, title, amount, category: category || 'General', day } : item
-      );
-      saveData(updated);
-    } else { //check
-      
-const newItem = { 
-        id: Date.now().toString(), 
-        title, 
-        amount, 
-        category: category || 'General',
-        day 
-      };
-      saveData([...expenses, newItem]);
+    try {
+      if (editingId) {
+
+        const docRef = doc(db, 'users', auth.currentUser.uid, 'expenses', editingId);
+        await updateDoc(docRef, expenseData);
+      } else {
+        const colRef = collection(db, 'users', auth.currentUser.uid, 'expenses');
+        await addDoc(colRef, expenseData);
+      }
+      loadData();
+      resetForm();
+    } catch (error) {
+      Alert.alert("Save Failed", error.message);
     }
-    resetForm();
   };
-
-  const startEdit = (item) => {
-    setEditingId(item.id);
-    setTitle(item.title);
-    setAmount(item.amount);
-    setCategory(item.category);
-    setDay(item.day || 'Monday');
-    setModalVisible(true);
-  };
-
-
 //Tumaque
   const deleteItem = (id) => {
     Alert.alert("Delete Expense", "Are you sure you want to remove this item?", [
@@ -134,16 +151,27 @@ const newItem = {
       { 
         text: "Delete", 
         style: "destructive", 
-        onPress: () => {
-
-          const remainingExpenses = expenses.filter(item => item.id !== id);
-          
-          saveData(remainingExpenses);
+        onPress: async () => {
+          try {
+            const docRef = doc(db, 'users', auth.currentUser.uid, 'expenses', id);
+            await deleteDoc(docRef);
+            loadData(); // Re-fetch current listings
+          } catch (e) {
+            Alert.alert("Error", "Could not delete database item.");
+          }
         } 
       }
     ]);
   };
 
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setTitle(item.title);
+    setAmount(item.amount.toString());
+    setCategory(item.category);
+    setDay(item.day || 'Monday');
+    setModalVisible(true);
+  };
   
   const resetForm = () => {
     setTitle('');
@@ -172,69 +200,53 @@ const newItem = {
     { dayName: 'Sunday', amount: getExpensesByDay('Sunday') },
   ];
 
-if (initializing) return null;
+if (initializing) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: '#64748B' }}>Loading SpendWise...</Text>
+      </SafeAreaView>
+    );
+  }
 
-if (!user) {
-return (
+  // ====== Auth Screen State ======
+  if (!user) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', paddingHorizontal: 24 }]}>
+        <StatusBar barStyle="dark-content" />
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#0006a5', marginBottom: 32, textAlign: 'center' }}>SpendWise Ledger</Text>
+        
+        <View style={styles.inputGroup}>
+          <FileText size={18} color="#94A3B8" style={styles.inputIcon} />
+          <TextInput placeholder="Email Address" value={email} onChangeText={setEmail} style={styles.input} autoCapitalize="none" keyboardType="email-address" placeholderTextColor="#94A3B8" />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <X size={18} color="#94A3B8" style={styles.inputIcon} />
+          <TextInput placeholder="Password" value={password} onChangeText={setPassword} style={styles.input} secureTextEntry autoCapitalize="none" placeholderTextColor="#94A3B8" />
+        </View>
+
+        <TouchableOpacity style={[styles.saveBtn, { marginTop: 24 }]} onPress={handleLogin}>
+          <Text style={styles.btnText}>Login</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#64748B', marginTop: 12 }]} onPress={handleSignUp}>
+          <Text style={styles.btnText}>Register New Account</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+  
+  // ====== Main Application State ======
+  return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      <HeaderCard total={totalWeeklyExpenses} totalItems={expenses.length} />
-      <WeeklyBreakdownDashboard breakdown={weeklyBreakdown} />
-
-      <FlatList
-        data={expenses}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No expenses recorded yet.</Text>
-            <Text style={styles.emptySubtext}>Tap the + button to track your first budget item.</Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <ExpenseCard item={item} onEdit={() => startEdit(item)} onDelete={() => deleteItem(item.id)} />
-        )}
-      />
-
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.8}>
-        <Plus color="#FFF" size={28} />
-      </TouchableOpacity>
-
-      <ExpenseModal
-        visible={modalVisible}
-        editingId={editingId}
-        title={title}
-        setTitle={setTitle}
-        amount={amount}
-        setAmount={setAmount}
-        category={category}
-        setCategory={setCategory}
-        day={day}
-        setDay={setDay}
-        onSave={handleSave}
-        onClose={resetForm}
-      />
-    </SafeAreaView>
-  );
-}
-}
-
-// ==========================================
-  // FIREBASE AUTH INTEGRATION END
-  // ==========================================
-
-return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      
-      <View style={{ paddingHorizontal: 16, paddingTop: 10, alignment: 'flex-end', flexDirection: 'row', justifyContent: 'spaceBetween' }}>
-        <Text style={{ fontSize: 12, color: '#64748B' }}>User: {user.email}</Text>
+      <View style={{ paddingHorizontal: 16, paddingTop: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 12, color: '#64748B' }}>User: {user?.email}</Text>
         <TouchableOpacity onPress={handleLogout}>
           <Text style={{ fontSize: 12, color: 'red', fontWeight: 'bold' }}>Logout</Text>
         </TouchableOpacity>
       </View>
-      {}
 
       <HeaderCard total={totalWeeklyExpenses} totalItems={expenses.length} />
       <WeeklyBreakdownDashboard breakdown={weeklyBreakdown} />
@@ -274,12 +286,13 @@ return (
       />
     </SafeAreaView>
   );
+}
 
 function HeaderCard({ total, totalItems }) {
   return (
     <View style={styles.headerCard}>
       <Text style={styles.totalLabel}>TOTAL Daily EXPENSES</Text>
-      <Text style={styles.totalAmount}>Php{total.toFixed(2)}</Text>
+      <Text style={styles.totalAmount}>Php{(total || 0).toFixed(2)}</Text>
       <View style={styles.badge}>
         <Text style={styles.badgeText}>{totalItems} {totalItems === 1 ? 'Transaction' : 'Transactions'}</Text>
       </View>
@@ -318,7 +331,9 @@ function ExpenseCard({ item, onEdit, onDelete }) {
       </View>
       
       <View style={styles.cardRight}>
-        <Text style={styles.itemAmount}>Php{parseFloat(item.amount).toFixed(2)}</Text>
+        <Text style={styles.itemAmount}>
+  Php{(parseFloat(item.amount) || 0).toFixed(2)}
+</Text>local
         <View style={styles.actionRow}>
           <TouchableOpacity onPress={onEdit} style={styles.iconBtn}>
             <Edit3 size={18} color="#64748B" />
